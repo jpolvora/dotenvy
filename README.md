@@ -128,6 +128,19 @@ $options = [
 $dotenvy = new \Dotenvy\Dotenvy(__DIR__, $options);
 ```
 
+Reference your validator in `.env.example`
+
+```shell
+#.env.example
+MY_ENV_VAR=my_custom_validator_name(my_custom_parameter)
+ANOTHER_ENV_VAR=uppercase
+```
+
+```shell
+#.env
+ANOTHER_ENV_VAR=this_value_will_be_uppercased #will evaluate to THIS_VALUE_WILL_BE_UPPERCASED
+```
+
 # Usage
 
 ```php
