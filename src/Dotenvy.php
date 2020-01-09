@@ -4,7 +4,7 @@
  * @ Author: Jone Pólvora
  * @ Create Time: 2020-01-08 14:53:16
  * @ Modified by: Jone Pólvora
- * @ Modified time: 2020-01-08 22:27:43
+ * @ Modified time: 2020-01-09 00:43:20
  * @ Description:
  */
 
@@ -159,8 +159,6 @@ class Dotenvy
       $line = trim($line);
       if (empty($line)) continue;
       list($k, $v) = explode('=', $line);
-      if (empty($k) || empty($v)) continue;
-
       $result[$k] = $v;
     }
 
@@ -214,7 +212,8 @@ class Dotenvy
 
     foreach ($fns as $fn) {
       $out = call_user_func_array(array($this, $fn['method']), array($key, $retval, $fn['args']));
-      if (!empty($out)) $retval = $out;
+      if (is_string($out) && strlen($out) === 0) continue;
+      $retval = $out;
     }
 
     return $retval;
@@ -290,18 +289,18 @@ class Dotenvy
     return $value;
   }
 
-
-  public function validator_default(string $key, string $value, array $args): string
+  public function validator_fallback(string $key, string $value, array $args): string
   {
-    if (empty($args)) throw new \Exception(sprintf('[default_validator]: No default value was provided for key %s', $key));
-    if (empty($value)) $value = $args[0];
+    if (empty($args) || strlen($args[0]) === 0) throw new \Exception(sprintf('[default_validator]: No default value was provided for key %s', $key));
+    if (strlen($value) === 0) $value = $args[0];
 
     return $value;
   }
 
-  public function validator_options(string $key, string $value, array $args): string
+  public function validator_enum(string $key, string $value, array $args): string
   {
-    if (empty($value)) throw new \Exception(sprintf('[options_validator]: missing options for key %s', $key));
+    if (empty($args)) throw new \Exception(sprintf('[enum_validator]: missing enumeration options for key %s', $key));
+    if (strlen($value) === 0) throw new \Exception(sprintf('[enum_validator]: no value provided for key %s', $key));
     if (!in_array($value, $args)) {
       throw new \Exception(sprintf('[options_validator]: invalid value for key %s. Should be one of these values: %s. Value provided is %s', $key, implode(', ', $args), $value));
     }
@@ -318,10 +317,10 @@ class Dotenvy
 
   public function validator_boolean(string $key, string $value, array $args): string
   {
-    if (empty($value)) throw new \Exception(sprintf('[boolean_validator]: empty value cannot be processed as boolean for key %s'));
+    if (strlen($value) === 0) throw new \Exception(sprintf('[boolean_validator]: empty value cannot be processed as boolean for key %s', $key));
     $isbool =  filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-    if (!is_bool($isbool) || !$isbool) throw new \Exception(sprintf('[boolean_validator]: invalid argument for [%s]. Should be boolean: %s', $key, $value));
-    return (bool) $value;
+    if (!is_bool($isbool) || $isbool === NULL) throw new \Exception(sprintf('[boolean_validator]: invalid argument for [%s]. Should be boolean: %s', $key, $value));
+    return $isbool;
   }
 
   public function validator_trim(string $key, string $value, array $args): string
