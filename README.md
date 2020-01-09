@@ -10,7 +10,7 @@ The goal is to provide a simple way to work with environment variables
 composer require jpolvora/dotenvy
 ```
 
-## Setup
+# WorkFlow
 
 Create a file named `.env.example` which will be shared through your dev team. This file must be commited to your repo.
 Place you keys and values of your application variables.
@@ -19,13 +19,12 @@ The format is `KEY=__validation-string__`
 For example:
 
 ```env
-API_KEY = trim|default(123)|number
+#.env.example
+API_KEY = trim|fallback(123)|number
 CI_ENV = trim|required|enum(development,production)
 ```
 
-Validators are built-in into library
-
-`// todo: Provide a way to extend with custom validators`
+There are some validators are built-in into library
 
 Current available validators are:
 
@@ -88,16 +87,52 @@ APP_LANG= # $_ENV['APP_LANG'] will fallback to 'en-us'
 
 ```shell
 # .env.example
-APP_LANG=fallback(en-us)
+WHITE_SPACES=trim
 # .env
-APP_LANG=pt-br # $_ENV['APP_LANG'] will be 'pt-br'
-APP_LANG= # $_ENV['APP_LANG'] will fallback to 'en-us'
+WHITE_SPACES=   string_that_should_be_trimmed #will trim left and right trailling white spaces
+```
+
+### important:
+
+Order of validators are mandatory. They will run sequentially, passing the resulting value to the next validator, in a middleware mode. In case validator evaluates to invalid, the pipeline will be interrupted
+
+## Custom validators
+
+You can create custom validators and feed Dotenvy with an array with key:value function name, function ref.
+Rules:
+
+- Validators must be functions with the following signature:
+
+```php
+function (string $key, string $value, array $args)
+```
+
+- You must always return a string that will be passed to next validator in validator chain/pipeline. If you pass null or empty string, the value will be ignored.
+- If you want to invalidate the value, you must throw an exception and tell the user what happened.
+
+```php
+$options = [
+  'custom_validators' => [
+    'uppercase' => function (string $key, string $value, array $args) {
+      return strtoupper($value);
+    },
+    'lowercase' => function (string $key, string $value, array $args) {
+      return strtolower($value);
+    },
+    'throw_exception' => function (string $key, string $value, array $args) {
+      throw new Exception(sprintf('%s=%s %s', $key, $value, implode(' - ', $args)));
+    }
+  ]
+];
+
+$dotenvy = new \Dotenvy\Dotenvy(__DIR__, $options);
 ```
 
 # Usage
 
 ```php
-$dotenvy = new \Dotenvy\Dotenvy(__DIR__);
+$dotenvy = new \Dotenvy\Dotenvy(__DIR__); //directory of containing files (.env and .env.example)
+
 $environment = $dotenvy->execute();
 if (is_string($environment)) throw new Exception('Invalid env: ' . $environment);
 
@@ -107,7 +142,24 @@ var_dump($environment);
 
 # Environment Results
 
-After running
+After running Dotenvy, environment variables will be available through:
+
+- `$_SERVER`
+- `$_ENV`
+- `getenv()`
+- `apache_getenv()`
+
+### Important
+
+Order of values precedence:
+
+- `$_SERVER`
+- `$_ENV`
+- `getenv()`
+- `apache_getenv()`
+- `.env` file
+- fallback validator
+- throw exception
 
 # Performance Optimization
 
@@ -115,10 +167,9 @@ Dotenvy can use a compiled cache file for maximum performance.
 The following code can be used to boost performance in production mode:
 
 ```php
+$dotenvy = new \Dotenvy\Dotenvy(__DIR__);
 
 $is_production = TRUE; //my custom logic to get info about production mode
-
-$dotenvy = new \Dotenvy\Dotenvy(__DIR__);
 
 if ($is_production) {
   if ($dotenvy->hasCacheFile()) {

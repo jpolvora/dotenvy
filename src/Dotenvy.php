@@ -4,18 +4,23 @@
  * @ Author: Jone Pólvora
  * @ Create Time: 2020-01-08 14:53:16
  * @ Modified by: Jone Pólvora
- * @ Modified time: 2020-01-09 00:43:20
+ * @ Modified time: 2020-01-09 02:56:47
  * @ Description:
  */
 
 namespace Dotenvy;
 
+define('VALIDATOR_SEPARATOR_CHAR', '|');
+define('VALIDATOR_ARGS_START', '(');
+define('VALIDATOR_ARGS_END', ')');
+
 class Dotenvy
 {
   private $directory;
-  private $example;
-  private $real;
-  private $allow_overwrite;
+  private $example = '.env.example';
+  private $real = '.env';
+  private $allow_overwrite = true;
+  protected $custom_validators = [];
 
   public static function autoExec(string $directory, array $storage, string $key, string $value)
   {
@@ -44,13 +49,15 @@ class Dotenvy
     }
   }
 
-  public function __construct(string $directory, string $example = '.env.example', string $real = '.env', bool $allowOvewrite = true)
+  public function __construct(string $directory, array &$options = [])
   {
+    //string $example = '.env.example', string $real = '.env', bool $allowOvewrite = true
     if (empty($directory)) throw new \Exception('argument "$directory" is required');
     $this->directory = $directory;
-    if (!empty($example)) $this->example = $example;
-    if (!empty($real)) $this->real = $real;
-    $this->allow_overwrite = $allowOvewrite;
+    if (array_key_exists('example', $options)) $this->example = $options['example'];
+    if (array_key_exists('envfile', $options)) $this->real = $options['envfile'];
+    if (array_key_exists('allow_ovewrite', $options)) $this->allow_overwrite = $options['allow_ovewrite'];
+    if (array_key_exists('custom_validators', $options)) $this->custom_validators = $options['custom_validators'];
   }
 
   private function getCacheFileName(): string
@@ -167,8 +174,6 @@ class Dotenvy
 
   private function validate(array $exampleSource, array $realSource): array
   {
-    //verificar as chaves do example    
-
     $results = [];
 
     foreach ($exampleSource as $key => $validators) {
@@ -205,13 +210,18 @@ class Dotenvy
     return '';
   }
 
-  private function validateItem(string $key, string $validators, string $currentValue): string
+  private function validateItem(string $key, string $line, string $currentValue): string
   {
-    $fns = $this->getValidators($validators);
+    $validators = $this->getValidators($line);
     $retval = $currentValue;
 
-    foreach ($fns as $fn) {
-      $out = call_user_func_array(array($this, $fn['method']), array($key, $retval, $fn['args']));
+    foreach ($validators as list($custom, $method, $args)) {
+      $out = '';
+      if ($custom) {
+        $out = call_user_func_array($this->custom_validators[$method], array($key, $retval, $args));
+      } else {
+        $out = call_user_func_array(array($this, $method), array($key, $retval, $args));
+      }
       if (is_string($out) && strlen($out) === 0) continue;
       $retval = $out;
     }
@@ -219,18 +229,21 @@ class Dotenvy
     return $retval;
   }
 
-  private function getValidators(string $validators): array
+  private function getValidators(string $line): array
   {
     $result =  [];
 
-    $fns = explode('|', $validators);
-    foreach ($fns as $fn) {
-
-      $tuple = $this->sliceMethodArgs($fn);
-
-      $searchMethod = 'validator_' . $tuple['method'];
+    $validators = explode(VALIDATOR_SEPARATOR_CHAR, $line);
+    foreach ($validators as $validator) {
+      list($method, $args) = $this->sliceMethodArgs($validator);
+      $searchMethod = 'validator_' . $method;
       if (method_exists($this, $searchMethod)) {
-        array_push($result, array('method' => $searchMethod, 'args' => $tuple['args']));
+        array_push($result, array(FALSE,  $searchMethod,  $args));
+        continue;
+      }
+
+      if (array_key_exists($method, $this->custom_validators)) {
+        array_push($result, array(TRUE, $method,  $args));
       }
     }
 
@@ -241,22 +254,22 @@ class Dotenvy
   {
     $str = trim($str);
 
-    $pos = strrpos($str, "(");
+    $pos = strrpos($str, VALIDATOR_ARGS_START);
     if (is_bool($pos) && !$pos) {
-      return ['method' => $str, 'args' => []];
+      return [$str,  []];
     }
 
     $method = substr($str, 0, $pos);
 
-    $endpos = strrpos($str, ")");
+    $endpos = strrpos($str, VALIDATOR_ARGS_END);
     if (is_bool($endpos) && !$endpos) {
-      return ['method' => $method, 'args' => []];
+      return [$method,  []];
     }
 
     $args_str = substr($str, $pos + 1, -1);
     $args = explode(',', $args_str);
 
-    return ['method' => $method, 'args' => $args];
+    return [$method,  $args];
   }
 
   private function setEnvironmentValue($key, $value)
