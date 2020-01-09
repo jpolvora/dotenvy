@@ -3,16 +3,10 @@
 require_once('../src/Dotenvy.php');
 
 $options = [
-  'use_hash' => true,
+  'cachefile' => md5(date("Ymd")) . '.env',
   'custom_validators' => [
-    'uppercase' => function (string $key, string $value, array $args) {
-      return strtoupper($value);
-    },
-    'lowercase' => function (string $key, string $value, array $args) {
-      return strtolower($value);
-    },
-    'throw_exception' => function (string $key, string $value, array $args) {
-      throw new Exception(sprintf('%s=%s %s', $key, $value, implode(' - ', $args)));
+    'mycustomvalidator' => function (string $key, string $value, array $args) {
+      return '(-' . $value . '-)';
     }
   ]
 ];
@@ -20,13 +14,14 @@ $options = [
 //$environment = Dotenvy\Dotenvy::exec_development(__DIR__, $options);
 $environment = Dotenvy\Dotenvy::exec_production(__DIR__, $options);
 
-
 //$dotenvy = new \Dotenvy\Dotenvy(__DIR__, $options);
 //$environment = $dotenvy->execute();
 
 if (is_string($environment)) throw new Exception('Invalid env: ' . $environment);
 
 var_dump($environment);
+
+print_r($_ENV);
 
 
 

@@ -4,7 +4,7 @@
  * @ Author: Jone Pólvora
  * @ Create Time: 2020-01-08 14:53:16
  * @ Modified by: Jone Pólvora
- * @ Modified time: 2020-01-09 10:21:44
+ * @ Modified time: 2020-01-09 15:24:32
  * @ Description:
  */
 
@@ -23,9 +23,9 @@ class Dotenvy
   private $directory;
 
   private $example = '.env.example';
+  private $cache = 'cache.env';
   private $real = '.env';
   private $allow_overwrite = true;
-  private $use_hash = false;
   protected $custom_validators = [];
 
   /**
@@ -68,23 +68,14 @@ class Dotenvy
     $this->directory = $directory;
     if (array_key_exists('example', $options)) $this->example = $options['example'];
     if (array_key_exists('envfile', $options)) $this->real = $options['envfile'];
+    if (array_key_exists('cachefile', $options)) $this->cache = $options['cachefile'];
     if (array_key_exists('allow_ovewrite', $options)) $this->allow_overwrite = $options['allow_ovewrite'];
-    if (array_key_exists('use_hash', $options)) $this->use_hash = $options['use_hash'];
     if (array_key_exists('custom_validators', $options)) $this->custom_validators = $options['custom_validators'];
   }
 
   private function getCacheFileName(): string
   {
-    if ($this->use_hash === true) {
-      $envfile = $this->directory . DIRECTORY_SEPARATOR . $this->real;
-      if (is_file($envfile)) {
-        $hash = sha1_file($envfile);
-        $result =  $this->directory . DIRECTORY_SEPARATOR . $hash . '.env.cache';
-        return $result;
-      }
-    }
-
-    return $this->directory . DIRECTORY_SEPARATOR . '.env.cache';
+    return $this->directory . DIRECTORY_SEPARATOR . $this->cache;
   }
 
   public function hasCacheFile(): bool
@@ -143,7 +134,7 @@ class Dotenvy
     $exampleSource = $this->parseLines($exampleLines);
 
     $realFileName = $this->directory . DIRECTORY_SEPARATOR . $this->real;
-    $realLines = $this->getLinesFromFile($realFileName);
+    $realLines = $this->getLinesFromFile($realFileName, false);
     $realSource = $this->parseLines($realLines);
 
     $results = $this->validate($exampleSource, $realSource);
@@ -166,7 +157,7 @@ class Dotenvy
     return $results;
   }
 
-  private function getLinesFromFile(string $fileName): array
+  private function getLinesFromFile(string $fileName, bool $throws = true): array
   {
     try {
       if (is_file($fileName)) {
@@ -175,10 +166,11 @@ class Dotenvy
           return explode("\n", $contents);
         }
       }
+      throw new \Exception('file not found: ' . $fileName);
     } catch (\Throwable $th) {
+      if (!$throws) return [];
+      throw $th;
     }
-
-    return [];
   }
 
   private static function ignoreLine($line)
@@ -369,6 +361,16 @@ class Dotenvy
   public function validator_trim(string $key, string $value, array $args): string
   {
     return trim($value);
+  }
+
+  public function validator_lowercase(string $key, string $value, array $args): string
+  {
+    return strtolower($value ?: '');
+  }
+
+  public function validator_uppercase(string $key, string $value, array $args): string
+  {
+    return strtoupper($value ?: '');
   }
 
   /* #endregion */

@@ -180,7 +180,8 @@ Dotenvy can use a compiled cache file for maximum performance.
 The following code can be used to boost performance in production mode:
 
 ```php
-$dotenvy = new \Dotenvy\Dotenvy(__DIR__);
+$envoptions = array();
+$dotenvy = new \Dotenvy\Dotenvy(__DIR__, $options);
 
 $is_production = TRUE; //my custom logic to get info about production mode
 
@@ -204,16 +205,26 @@ if ($is_production) {
 
 ```
 
-There's a static helper method that simplifies all logical above. The signature is:
+### Options usage
 
 ```php
-\Dotenvy\Dotenvy::autoExec(string $directory, array $storage, string $key, string $value);
-```
+$envoptions = [
+  'example' => '.env.example',
+  'envfile' => '.env',
+  'allow_ovewrite' => FALSE,
+  'cachefile' => md5(date("Ymd")) . '.env',
+  'custom_validators' => [
+    'mycustomvalidator' => function (string $key, string $value, array $args) {
+      return '(-' . $value . '-)';
+    }
+  ]
+];
 
-Below we tell Dotenvy to look in `$_SERVER` array for a key named `CI_ENV` and check if its value matches `production`. Case this expression evaluates to `TRUE` then `Dotenvy` will run through cache.
-
-```php
-\Dotenvy\Dotenvy::autoExec(__DIR__, $_SERVER, 'CI_ENV', 'production');
+if ((array_key_exists('CI_ENV', $_SERVER) && $_SERVER['CI_ENV'] === 'production')) {
+  Dotenvy\Dotenvy::exec_production(__DIR__, $envoptions);
+} else {
+  Dotenvy\Dotenvy::exec_development(__DIR__, $envoptions);
+}
 ```
 
 # Run tests
