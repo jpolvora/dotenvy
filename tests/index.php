@@ -3,6 +3,7 @@
 require_once('../src/Dotenvy.php');
 
 $options = [
+  'use_hash' => true,
   'custom_validators' => [
     'uppercase' => function (string $key, string $value, array $args) {
       return strtoupper($value);
@@ -16,11 +17,13 @@ $options = [
   ]
 ];
 
-\Dotenvy\Dotenvy::exec_development()
+//$environment = Dotenvy\Dotenvy::exec_development(__DIR__, $options);
+$environment = Dotenvy\Dotenvy::exec_production(__DIR__, $options);
 
-$dotenvy = new \Dotenvy\Dotenvy(__DIR__, $options);
 
-$environment = $dotenvy->execute();
+//$dotenvy = new \Dotenvy\Dotenvy(__DIR__, $options);
+//$environment = $dotenvy->execute();
+
 if (is_string($environment)) throw new Exception('Invalid env: ' . $environment);
 
 var_dump($environment);

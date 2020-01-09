@@ -4,7 +4,7 @@
  * @ Author: Jone Pólvora
  * @ Create Time: 2020-01-08 14:53:16
  * @ Modified by: Jone Pólvora
- * @ Modified time: 2020-01-09 09:30:43
+ * @ Modified time: 2020-01-09 10:21:44
  * @ Description:
  */
 
@@ -13,6 +13,7 @@ namespace Dotenvy;
 define('VALIDATOR_SEPARATOR_CHAR', '|');
 define('VALIDATOR_ARGS_START', '(');
 define('VALIDATOR_ARGS_END', ')');
+define('LINE_COMMENT', '#');
 
 class Dotenvy
 {
@@ -24,6 +25,7 @@ class Dotenvy
   private $example = '.env.example';
   private $real = '.env';
   private $allow_overwrite = true;
+  private $use_hash = false;
   protected $custom_validators = [];
 
   /**
@@ -67,11 +69,21 @@ class Dotenvy
     if (array_key_exists('example', $options)) $this->example = $options['example'];
     if (array_key_exists('envfile', $options)) $this->real = $options['envfile'];
     if (array_key_exists('allow_ovewrite', $options)) $this->allow_overwrite = $options['allow_ovewrite'];
+    if (array_key_exists('use_hash', $options)) $this->use_hash = $options['use_hash'];
     if (array_key_exists('custom_validators', $options)) $this->custom_validators = $options['custom_validators'];
   }
 
   private function getCacheFileName(): string
   {
+    if ($this->use_hash === true) {
+      $envfile = $this->directory . DIRECTORY_SEPARATOR . $this->real;
+      if (is_file($envfile)) {
+        $hash = sha1_file($envfile);
+        $result =  $this->directory . DIRECTORY_SEPARATOR . $hash . '.env.cache';
+        return $result;
+      }
+    }
+
     return $this->directory . DIRECTORY_SEPARATOR . '.env.cache';
   }
 
@@ -169,11 +181,19 @@ class Dotenvy
     return [];
   }
 
+  private static function ignoreLine($line)
+  {
+    $is_comment = substr($line, 0, strlen(LINE_COMMENT)) === LINE_COMMENT;
+    return $is_comment;
+  }
+
   private function parseLines(array $lines)
   {
     $result = array();
     foreach ($lines as $line) {
       $line = trim($line);
+      if (self::ignoreLine($line)) continue;
+
       if (empty($line)) continue;
       list($k, $v) = explode('=', $line);
       $result[$k] = $v;
