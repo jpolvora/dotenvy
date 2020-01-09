@@ -1,0 +1,20 @@
+{
+    "name": "jpolvora/dotenvy",
+    "description": "PHP Environment Variables Manager with dotenv (.env) files and validation by example",
+    "type": "library",
+    "require": {
+        "php": "^5.5.9 || ^7.0"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Jone Pólvora",
+            "email": "jpolvora@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Dotenvy\\": "src/"
+        }
+    }
+}
