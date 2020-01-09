@@ -16,6 +16,8 @@ $options = [
   ]
 ];
 
+\Dotenvy\Dotenvy::exec_development()
+
 $dotenvy = new \Dotenvy\Dotenvy(__DIR__, $options);
 
 $environment = $dotenvy->execute();

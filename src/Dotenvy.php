@@ -4,7 +4,7 @@
  * @ Author: Jone Pólvora
  * @ Create Time: 2020-01-08 14:53:16
  * @ Modified by: Jone Pólvora
- * @ Modified time: 2020-01-09 02:56:47
+ * @ Modified time: 2020-01-09 09:30:43
  * @ Description:
  */
 
@@ -16,42 +16,52 @@ define('VALIDATOR_ARGS_END', ')');
 
 class Dotenvy
 {
+  /**
+   * @var string  Directory where look for .env files
+   */
   private $directory;
+
   private $example = '.env.example';
   private $real = '.env';
   private $allow_overwrite = true;
   protected $custom_validators = [];
 
-  public static function autoExec(string $directory, array $storage, string $key, string $value)
+  /**
+   * Creates Dotenvy instance and executes with Cache
+   * @param string $directory   Directory containing .env files
+   * @param array $options      Array with options
+   * @return string|array       Return array in case of success, or string in case of errors.
+   */
+  public static function exec_production(string $directory, array $options)
   {
-    $is_production = array_key_exists($key, $storage) && $storage[$key] === $value;
-
-    $envhelper = new self($directory);
-    if ($is_production) {
-      //is production - write and use cache if necessary
-      if ($envhelper->hasCacheFile()) {
-        $envhelper->executeFromCache();
-      } else {
-        $envresult = $envhelper->execute();
-        if (is_array($envresult)) {
-          $envhelper->writeCache($envresult);
-        } else {
-          throw new \Exception($envresult); //string
-        }
-      }
-    } else {
-      //development mode - exec default
-      $envhelper->clearCache();
-      $envresult = $envhelper->execute();
-      if (is_string($envresult)) {
-        throw new \Exception($envresult); //string
-      }
+    $instance = new self($directory, $options);
+    if ($instance->hasCacheFile()) {
+      return $instance->executeFromCache();
     }
+
+    $envresult = $instance->execute();
+    if (is_array($envresult)) {
+      $instance->writeCache($envresult);
+    }
+
+    return $envresult;
   }
 
-  public function __construct(string $directory, array &$options = [])
+  /**
+   * Creates Dotenvy instance and executes it with default options
+   * @param string $directory   Directory containing .env files
+   * @param array $options      Array with options
+   * @return string|array       Return array in case of success, or string in case of errors.
+   */
+  public static function exec_development(string $directory, array $options)
   {
-    //string $example = '.env.example', string $real = '.env', bool $allowOvewrite = true
+    $instance = new self($directory, $options);
+    $instance->clearCache();
+    return $instance->execute();
+  }
+
+  public function __construct(string $directory, array $options = [])
+  {
     if (empty($directory)) throw new \Exception('argument "$directory" is required');
     $this->directory = $directory;
     if (array_key_exists('example', $options)) $this->example = $options['example'];
@@ -294,7 +304,7 @@ class Dotenvy
     }
   }
 
-  /* #region validators */
+  /* #region built-in validators */
 
   public function validator_required(string $key, string $value, array $args): string
   {
