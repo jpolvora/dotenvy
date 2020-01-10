@@ -4,7 +4,7 @@
  * @ Author: Jone Pólvora
  * @ Create Time: 2020-01-08 14:53:16
  * @ Modified by: Jone Pólvora
- * @ Modified time: 2020-01-09 15:24:32
+ * @ Modified time: 2020-01-09 22:07:17
  * @ Description:
  */
 
@@ -13,7 +13,7 @@ namespace Dotenvy;
 define('VALIDATOR_SEPARATOR_CHAR', '|');
 define('VALIDATOR_ARGS_START', '(');
 define('VALIDATOR_ARGS_END', ')');
-define('LINE_COMMENT', '#');
+define('COMMENT_START', '#');
 
 class Dotenvy
 {
@@ -130,11 +130,11 @@ class Dotenvy
   public function execute()
   {
     $exampleFileName = $this->directory . DIRECTORY_SEPARATOR . $this->example;
-    $exampleLines = $this->getLinesFromFile($exampleFileName);
+    $exampleLines = $this->getLinesFromFile($exampleFileName, TRUE);
     $exampleSource = $this->parseLines($exampleLines);
 
     $realFileName = $this->directory . DIRECTORY_SEPARATOR . $this->real;
-    $realLines = $this->getLinesFromFile($realFileName, false);
+    $realLines = $this->getLinesFromFile($realFileName);
     $realSource = $this->parseLines($realLines);
 
     $results = $this->validate($exampleSource, $realSource);
@@ -157,35 +157,36 @@ class Dotenvy
     return $results;
   }
 
-  private function getLinesFromFile(string $fileName, bool $throws = true): array
+  private function getLinesFromFile(string $fileName, bool $required = false): array
   {
-    try {
-      if (is_file($fileName)) {
-        $contents = file_get_contents($fileName);
-        if ($contents) {
-          return explode("\n", $contents);
-        }
+    if (is_file($fileName)) {
+      $contents = file_get_contents($fileName);
+      if ($contents) {
+        return explode("\n", $contents);
       }
-      throw new \Exception('file not found: ' . $fileName);
-    } catch (\Throwable $th) {
-      if (!$throws) return [];
-      throw $th;
-    }
+    } else if ($required) throw new \Exception('Required file doesn\'t exists');
+
+    return [];
   }
 
-  private static function ignoreLine($line)
+  private static function removeComment($line)
   {
-    $is_comment = substr($line, 0, strlen(LINE_COMMENT)) === LINE_COMMENT;
-    return $is_comment;
+    $line = trim($line);
+    if (!empty($line)) {
+      $pos = strpos($line, COMMENT_START);
+      if (is_integer($pos) && $pos >= 0) {
+        $line = str_replace(substr($line, $pos), '', $line);
+      }
+    }
+
+    return $line;
   }
 
   private function parseLines(array $lines)
   {
     $result = array();
     foreach ($lines as $line) {
-      $line = trim($line);
-      if (self::ignoreLine($line)) continue;
-
+      $line = self::removeComment($line);
       if (empty($line)) continue;
       list($k, $v) = explode('=', $line);
       $result[$k] = $v;

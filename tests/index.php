@@ -3,7 +3,8 @@
 require_once('../src/Dotenvy.php');
 
 $options = [
-  'cachefile' => md5(date("Ymd")) . '.env',
+  //  'envfile' => 'my.env',
+  'cachefile' => date("YmdHi") . '.env',
   'custom_validators' => [
     'mycustomvalidator' => function (string $key, string $value, array $args) {
       return '(-' . $value . '-)';
